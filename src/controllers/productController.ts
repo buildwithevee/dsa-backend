@@ -10,6 +10,8 @@ export const productCreate = async (req: Request, res: Response): Promise<void> 
         EnrollDate,
         Compilance,
         AssignedTo,
+        warranty,
+        note
     } = req.body;
 
     try {
@@ -20,6 +22,8 @@ export const productCreate = async (req: Request, res: Response): Promise<void> 
             EnrollDate: EnrollDate || new Date(), // Use current date if not provided
             Compilance: Compilance || false,
             AssignedTo: AssignedTo || '',
+            warranty: warranty || false,
+            note: note || ""
         });
 
         await product.save();
@@ -84,10 +88,18 @@ export const productEdit = async (req: Request, res: Response): Promise<void> =>
         EnrollDate,
         Compilance,
         AssignedTo,
+        warranty,
+        note
     } = req.body;
 
     try {
-        // Find product by ID and update it
+        // Validate input
+        if (!id || !DeviceName || !Model || !SerialNumber || !EnrollDate) {
+            res.status(400).json({ error: 'All required fields must be provided' });
+            return;
+        }
+
+        // Find and update product
         const updatedProduct = await Product.findByIdAndUpdate(
             id,
             {
@@ -97,23 +109,28 @@ export const productEdit = async (req: Request, res: Response): Promise<void> =>
                 EnrollDate,
                 Compilance,
                 AssignedTo,
+                warranty,
+                note
             },
-            { new: true, runValidators: true } // Return updated document and validate inputs
+            { new: true } // Return updated document and validate inputs
         );
 
-        // Check if product exists
         if (!updatedProduct) {
             res.status(404).json({ error: 'Product not found' });
             return;
         }
 
-        // Send updated product as response
-        res.status(200).json({ product: updatedProduct });
-    } catch (error) {
-        console.error('Error editing product', error);
-        res.status(500).json({ error: 'Failed to edit product' });
+        res.status(200).json({ message: 'Product updated successfully', product: updatedProduct });
+    } catch (error: any) {
+        if (error.name === 'ValidationError') {
+            res.status(422).json({ error: 'Validation error: Invalid data format' });
+        } else {
+            console.error('Error editing product', error);
+            res.status(500).json({ error: 'Failed to edit product' });
+        }
     }
 };
+
 
 export const getSingleProduct = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params; // Extract product ID from URL params
@@ -234,10 +251,61 @@ export const searchProducts = async (req: Request, res: Response): Promise<void>
             data: products,
             total: totalProducts,
             totalPages: totalPages,
-            currentPage: pageNo,
+            // currentPage: pageNo,
         });
     } catch (error) {
         console.error('Error searching products:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch products', error });
+    }
+};
+
+export const getProductsBetweenDates = async (req: Request, res: Response): Promise<void> => {
+    const { startDate, endDate } = req.query;
+
+    try {
+        // Validate date parameters
+        if (!startDate || !endDate) {
+            res.status(400).json({ success: false, message: 'Both startDate and endDate are required' });
+            return;
+        }
+
+        const parsedStartDate = new Date(startDate as string);
+        const parsedEndDate = new Date(endDate as string);
+
+        if (isNaN(parsedStartDate.getTime()) || isNaN(parsedEndDate.getTime())) {
+            res.status(400).json({ success: false, message: 'Invalid date format' });
+            return;
+        }
+
+        // Pagination setup
+
+
+        // Fetch products within the date range
+        const products = await Product.find({
+            EnrollDate: {
+                $gte: parsedStartDate, // Greater than or equal to startDate
+                $lte: parsedEndDate,  // Less than or equal to endDate
+            },
+        })
+            .sort({ EnrollDate: -1 });
+
+        // Count total products in the range
+        const totalProducts = await Product.countDocuments({
+            EnrollDate: {
+                $gte: parsedStartDate,
+                $lte: parsedEndDate,
+            },
+        });
+
+        // Return the result
+        res.status(200).json({
+            success: true,
+            message: 'Products fetched successfully',
+            data: products,
+            total: totalProducts,
+        });
+    } catch (error) {
+        console.error('Error fetching products by date range:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch products', error });
     }
 };

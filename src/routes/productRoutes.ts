@@ -7,7 +7,7 @@ const router = Router();
 router.route("/create").post(productCreate);
 router.route("/get-products").get(getAllProducts);
 router.route("/get-recent").get(getRecentProduct);
-router.put('/editProduct/:id', productEdit);
+router.route('/edit-product/:id').put(productEdit);
 router.get('/each/:id', getSingleProduct);
 router.delete('/each/:id', deleteProduct);
 

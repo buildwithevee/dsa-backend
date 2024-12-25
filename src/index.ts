@@ -3,6 +3,7 @@ import cors from 'cors';
 import { connectDb } from './conf/db';
 import productRouter from './routes/productRoutes';
 import authRouter from './routes/userRoutes';
+import reportRouter from './routes/ReportRoutes';
 
 // Initialize Express app
 const app = express();
@@ -12,6 +13,7 @@ app.use(cors());
 //routes
 app.use("/api/product", productRouter);
 app.use("/api/auth", authRouter);
+app.use("/api/reports", reportRouter);
 app.get("*", (req, res) => {
     res.sendFile('/var/www/evee/dsa/dsa-frontend/dist/index.html');
 });
