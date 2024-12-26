@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Product from "../models/productModel";
 import QRCode from 'qrcode';
+import { Employee } from "../utils/employee";
 
 export const productCreate = async (req: Request, res: Response): Promise<void> => {
     const {
@@ -11,7 +12,8 @@ export const productCreate = async (req: Request, res: Response): Promise<void> 
         Compilance,
         AssignedTo,
         warranty,
-        note
+        note,
+        branch
     } = req.body;
 
     try {
@@ -23,7 +25,8 @@ export const productCreate = async (req: Request, res: Response): Promise<void> 
             Compilance: Compilance || false,
             AssignedTo: AssignedTo || '',
             warranty: warranty || false,
-            note: note || ""
+            note: note || "",
+            branch: branch || "",
         });
 
         await product.save();
@@ -89,7 +92,8 @@ export const productEdit = async (req: Request, res: Response): Promise<void> =>
         Compilance,
         AssignedTo,
         warranty,
-        note
+        note,
+        branch,
     } = req.body;
 
     try {
@@ -110,7 +114,8 @@ export const productEdit = async (req: Request, res: Response): Promise<void> =>
                 Compilance,
                 AssignedTo,
                 warranty,
-                note
+                note,
+                branch
             },
             { new: true } // Return updated document and validate inputs
         );
@@ -183,7 +188,7 @@ export const generateQr = async (req: Request, res: Response): Promise<void> => 
         return;
     }
 
-    const url = `http://192.168.29.227:5173/product/${productId}`;
+    const url = `http://localhost:5173/product/${productId}`;
     try {
         const qrCodeData = await QRCode.toDataURL(url);
         res.status(200).json({ qrCodeData });
@@ -211,8 +216,8 @@ export const searchProducts = async (req: Request, res: Response): Promise<void>
         const skip: number = (pageNo - 1) * limitOf;
 
         // Construct the search query
-        let query: any = {};
 
+        let query: any = {};
         if (searchTerm) {
             const searchRegex = { $regex: searchTerm, $options: "i" }; // Case-insensitive search
             query.$or = [
@@ -309,3 +314,79 @@ export const getProductsBetweenDates = async (req: Request, res: Response): Prom
         res.status(500).json({ success: false, message: 'Failed to fetch products', error });
     }
 };
+
+
+
+
+export const getStats = async (req: Request, res: Response) => {
+    try {
+        // Helper function to get start and end of a day in Saudi Arabia timezone
+        const getSaudiDateRange = (offsetHours: number = 0) => {
+            const now = new Date();
+            const saudiDate = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Riyadh" }));
+            saudiDate.setHours(offsetHours, 0, 0, 0); // Adjust to start or end of the day
+            return saudiDate;
+        };
+
+        // Start and end of today in Saudi Arabia time
+        const startOfToday = getSaudiDateRange(0); // Start of the day
+        const endOfToday = getSaudiDateRange(23); // End of the day
+
+        // Start and end of the current month in Saudi Arabia time
+        const startOfMonth = new Date();
+        startOfMonth.setUTCFullYear(startOfToday.getFullYear(), startOfToday.getMonth(), 1); // First day of the month
+        startOfMonth.setUTCHours(0, 0, 0, 0);
+
+        const endOfMonth = new Date();
+        endOfMonth.setUTCFullYear(startOfToday.getFullYear(), startOfToday.getMonth() + 1, 0); // Last day of the month
+        endOfMonth.setUTCHours(23, 59, 59, 999);
+
+        //fetch the total pc count
+        const totalPc = await Product.countDocuments({})
+        // Fetch the total PC count for today
+        const totalPCToday = await Product.countDocuments({
+            EnrollDate: { $gte: startOfToday, $lte: endOfToday }
+        });
+
+        // Fetch the total PC count for this month
+        const totalPCThisMonth = await Product.countDocuments({
+            EnrollDate: { $gte: startOfMonth, $lte: endOfMonth }
+        });
+
+        // Send response
+        res.status(200).json({
+            success: true,
+            data: {
+                totalPc,
+                totalPCThisMonth,
+                totalPCToday
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching stats:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch stats', error });
+    }
+};
+
+
+export const searchEmployee = async (req: Request, res: Response) => {
+    try {
+        const { searchTerm } = req.query;
+        let query: any = {};
+        if (searchTerm) {
+            const searchRegex = { $regex: searchTerm, $options: "i" }; // Case-insensitive search
+            query.$or = [
+                { Emp_ID: searchRegex },
+                { Emlpoyee_Name: searchRegex },
+            ];
+        }
+        const employees = await Employee.find(query)
+            .limit(6)
+            .lean();
+        res.status(200).json({ message: "fetched sucess", success: true, employees })
+
+    } catch (error) {
+        console.error('Error fetching stats:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch employes', error });
+    }
+}

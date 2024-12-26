@@ -7,8 +7,9 @@ interface IProduct extends mongoose.Document {
     EnrollDate: Date;
     Compilance: boolean;
     AssignedTo: string;
-    warranty: boolean;
+    warranty: Date;
     note: string;
+    branch: string;
 }
 
 const productSchema = new mongoose.Schema<IProduct>({
@@ -36,10 +37,13 @@ const productSchema = new mongoose.Schema<IProduct>({
         type: String,
     },
     warranty: {
-        type: Boolean,
-        default: false
+        type: Date,
+
     },
     note: {
+        type: String,
+    },
+    branch: {
         type: String,
     }
 });

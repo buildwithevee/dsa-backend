@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { deleteProduct, generateQr, getAllProducts, getRecentProduct, getSingleProduct, productCreate, productEdit, searchProducts } from "../controllers/productController";
+import { deleteProduct, generateQr, getAllProducts, getRecentProduct, getSingleProduct, getStats, productCreate, productEdit, searchEmployee, searchProducts } from "../controllers/productController";
 
 const router = Router();
 
@@ -15,5 +15,9 @@ router.delete('/each/:id', deleteProduct);
 router.post("/generate", generateQr);
 
 router.route("/search").get(searchProducts);
+
+router.route("/stats").get(getStats);
+
+router.route("/search-employee").get(searchEmployee);
 
 export default router;
