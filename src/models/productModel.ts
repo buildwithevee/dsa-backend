@@ -7,7 +7,7 @@ interface IProduct extends mongoose.Document {
     EnrollDate: Date;
     Compilance: boolean;
     AssignedTo: string;
-    warranty: Date;
+    warranty: Date|null;
     note: string;
     branch: string;
 }
@@ -38,6 +38,7 @@ const productSchema = new mongoose.Schema<IProduct>({
     },
     warranty: {
         type: Date,
+        default: null
 
     },
     note: {
@@ -47,6 +48,8 @@ const productSchema = new mongoose.Schema<IProduct>({
         type: String,
     }
 });
+productSchema.index({ SerialNumber: 1 });
+productSchema.index({ branch: 1 });
 
 const Product = mongoose.model<IProduct>('Product', productSchema);
 export default Product;

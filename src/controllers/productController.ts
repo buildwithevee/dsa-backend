@@ -17,6 +17,14 @@ export const productCreate = async (req: Request, res: Response): Promise<void> 
     } = req.body;
 
     try {
+        // Handle warranty: Use null if no warranty date is provided
+        const parsedWarranty = warranty ? new Date(warranty) : null;
+
+        if (parsedWarranty && isNaN(parsedWarranty.getTime())) {
+            res.status(400).json({ error: 'Invalid warranty date provided' });
+            return;
+        }
+
         const product = new Product({
             DeviceName,
             Model,
@@ -24,7 +32,7 @@ export const productCreate = async (req: Request, res: Response): Promise<void> 
             EnrollDate: EnrollDate || new Date(), // Use current date if not provided
             Compilance: Compilance || false,
             AssignedTo: AssignedTo || '',
-            warranty: warranty || false,
+            warranty: parsedWarranty, // Null or a valid date
             note: note || "",
             branch: branch || "",
         });
@@ -36,6 +44,7 @@ export const productCreate = async (req: Request, res: Response): Promise<void> 
         res.status(500).json({ error: 'Failed to add product' });
     }
 };
+
 
 export const getAllProducts = async (req: Request, res: Response): Promise<void> => {
     const { page = 1, limit = 10 } = req.query; // Default to page 1 and limit 10 if not provided
@@ -65,7 +74,7 @@ export const getAllProducts = async (req: Request, res: Response): Promise<void>
 export const getRecentProduct = async (req: Request, res: Response): Promise<void> => {
     try {
         // Fetch the most recent product based on EnrollDate or _id (descending order)
-        const recentProduct = await Product.find().sort({ createdAt: -1 });
+        const recentProduct = await Product.find().sort({ EnrollDate: -1 });
 
         // Check if the product exists
         if (!recentProduct || recentProduct.length === 0) {
@@ -74,6 +83,8 @@ export const getRecentProduct = async (req: Request, res: Response): Promise<voi
         }
 
         // Send the recent product as a response
+        // console.log(recentProduct);
+
         res.status(200).json({ success: true, products: recentProduct });
     } catch (error) {
         console.error('Error fetching recent product:', error);
@@ -137,12 +148,43 @@ export const productEdit = async (req: Request, res: Response): Promise<void> =>
 };
 
 
+// export const getSingleProduct = async (req: Request, res: Response): Promise<void> => {
+//     const { id } = req.params; // Extract product ID from URL params
+
+//     try {
+//         // Find product by ID
+//         const product = await Product.findById(id).lean(); // Use `lean` for plain JavaScript object
+
+//         // Check if product exists
+//         if (!product) {
+//             res.status(404).json({ error: 'Product not found' });
+//             return;
+//         }
+
+//         // Add warrantyLeft field
+//         const currentDate = new Date();
+//         const warrantyLeft = product.warranty && product.warranty > currentDate ? "Yes" : "Expired";
+
+//         // Return response with warrantyLeft
+//         res.status(200).json({
+//             success: true,
+//             product: {
+//                 ...product,
+//                 warrantyLeft,
+//             },
+//         });
+//     } catch (error) {
+//         console.error('Error fetching product', error);
+//         res.status(500).json({ error: 'Failed to fetch product' });
+//     }
+// };
+
 export const getSingleProduct = async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params; // Extract product ID from URL params
 
     try {
         // Find product by ID
-        const product = await Product.findById(id);
+        const product = await Product.findById(id).lean(); // Use `lean` for plain JavaScript object
 
         // Check if product exists
         if (!product) {
@@ -150,8 +192,18 @@ export const getSingleProduct = async (req: Request, res: Response): Promise<voi
             return;
         }
 
-        // Send product data as response
-        res.status(200).json({ product });
+        // Add warrantyLeft field
+        const currentDate = new Date();
+        const warrantyLeft = product.warranty && product.warranty > currentDate ? "Valid" : "Expired";
+
+        // Return response with warrantyLeft
+        res.status(200).json({
+            success: true,
+            product: {
+                ...product,
+                warrantyLeft,
+            },
+        });
     } catch (error) {
         console.error('Error fetching product', error);
         res.status(500).json({ error: 'Failed to fetch product' });
@@ -200,6 +252,70 @@ export const generateQr = async (req: Request, res: Response): Promise<void> => 
 
 
 
+// export const searchProducts = async (req: Request, res: Response): Promise<void> => {
+//     try {
+//         const { page, limit, searchTerm, compilance, assignedTo } = req.query;
+
+//         // Set defaults for pagination
+//         const pageNo: number = parseInt(page as string) || 1;
+//         const limitOf: number = parseInt(limit as string) || 10;
+
+//         if (isNaN(pageNo) || isNaN(limitOf) || pageNo < 1 || limitOf < 1) {
+//             res.status(400).json({ message: "Invalid page or limit value", success: false });
+//             return;
+//         }
+
+//         const skip: number = (pageNo - 1) * limitOf;
+
+//         // Construct the search query
+
+//         let query: any = {};
+//         if (searchTerm) {
+//             const searchRegex = { $regex: searchTerm, $options: "i" }; // Case-insensitive search
+//             query.$or = [
+//                 { DeviceName: searchRegex },
+//                 { Model: searchRegex },
+//                 { SerialNumber: searchRegex },
+//                 { AssignedTo: searchRegex },
+//             ];
+//         }
+
+//         // Filter by Compliance
+//         if (compilance !== undefined) {
+//             query.Compilance = compilance === 'true';
+//         }
+
+//         // Filter by AssignedTo field
+//         if (assignedTo) {
+//             query.AssignedTo = { $regex: assignedTo, $options: "i" };
+//         }
+
+//         // Fetch filtered products with pagination
+//         const products = await Product.find(query)
+//             .skip(skip)
+//             .limit(limitOf)
+//             .sort({ EnrollDate: -1 }) // Sort by latest EnrollDate
+//             .lean();
+
+//         // Total documents count for the query
+//         const totalProducts = await Product.countDocuments(query);
+//         const totalPages = Math.ceil(totalProducts / limitOf);
+
+//         // Return response
+//         res.status(200).json({
+//             success: true,
+//             message: "Products fetched successfully",
+//             data: products,
+//             total: totalProducts,
+//             totalPages: totalPages,
+//             // currentPage: pageNo,
+//         });
+//     } catch (error) {
+//         console.error('Error searching products:', error);
+//         res.status(500).json({ success: false, message: 'Failed to fetch products', error });
+//     }
+// };
+
 export const searchProducts = async (req: Request, res: Response): Promise<void> => {
     try {
         const { page, limit, searchTerm, compilance, assignedTo } = req.query;
@@ -216,7 +332,6 @@ export const searchProducts = async (req: Request, res: Response): Promise<void>
         const skip: number = (pageNo - 1) * limitOf;
 
         // Construct the search query
-
         let query: any = {};
         if (searchTerm) {
             const searchRegex = { $regex: searchTerm, $options: "i" }; // Case-insensitive search
@@ -245,6 +360,13 @@ export const searchProducts = async (req: Request, res: Response): Promise<void>
             .sort({ EnrollDate: -1 }) // Sort by latest EnrollDate
             .lean();
 
+        // Add warrantyLeft field
+        const currentDate = new Date();
+        const productsWithWarranty = products.map(product => {
+            const warrantyLeft = product.warranty && product.warranty > currentDate ? "Valid" : "Expired";
+            return { ...product, warrantyLeft };
+        });
+
         // Total documents count for the query
         const totalProducts = await Product.countDocuments(query);
         const totalPages = Math.ceil(totalProducts / limitOf);
@@ -253,10 +375,9 @@ export const searchProducts = async (req: Request, res: Response): Promise<void>
         res.status(200).json({
             success: true,
             message: "Products fetched successfully",
-            data: products,
+            data: productsWithWarranty,
             total: totalProducts,
             totalPages: totalPages,
-            // currentPage: pageNo,
         });
     } catch (error) {
         console.error('Error searching products:', error);
@@ -282,9 +403,6 @@ export const getProductsBetweenDates = async (req: Request, res: Response): Prom
             return;
         }
 
-        // Pagination setup
-
-
         // Fetch products within the date range
         const products = await Product.find({
             EnrollDate: {
@@ -292,7 +410,15 @@ export const getProductsBetweenDates = async (req: Request, res: Response): Prom
                 $lte: parsedEndDate,  // Less than or equal to endDate
             },
         })
-            .sort({ EnrollDate: -1 });
+            .sort({ EnrollDate: -1 })
+            .lean(); // Use `lean` for plain JavaScript objects
+
+        // Add warrantyLeft field
+        const currentDate = new Date();
+        const productsWithWarranty = products.map(product => {
+            const warrantyLeft = product.warranty && product.warranty > currentDate ? "Valid" : "Expired";
+            return { ...product, warrantyLeft };
+        });
 
         // Count total products in the range
         const totalProducts = await Product.countDocuments({
@@ -306,7 +432,7 @@ export const getProductsBetweenDates = async (req: Request, res: Response): Prom
         res.status(200).json({
             success: true,
             message: 'Products fetched successfully',
-            data: products,
+            data: productsWithWarranty,
             total: totalProducts,
         });
     } catch (error) {
@@ -314,6 +440,7 @@ export const getProductsBetweenDates = async (req: Request, res: Response): Prom
         res.status(500).json({ success: false, message: 'Failed to fetch products', error });
     }
 };
+
 
 
 
