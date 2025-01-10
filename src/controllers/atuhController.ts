@@ -229,6 +229,7 @@ export const sendOtpToCurrentEmail = async (req: Request, res: Response) => {
         await OtpModel.deleteMany({ userId: user._id })
         const otp = generateOTP(); // Generate OTP
         await OtpModel.create({ otp, userId, username, email });
+        console.log("sending");
 
         await sendOtpEmail(user.email, otp); // Send OTP to current email
 
