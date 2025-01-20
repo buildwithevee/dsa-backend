@@ -6,10 +6,13 @@ const router = (0, express_1.Router)();
 //crud
 router.route("/create").post(productController_1.productCreate);
 router.route("/get-products").get(productController_1.getAllProducts);
+router.route("/get-deleted-products").get(productController_1.getAllDeletedProducts);
 router.route("/get-recent").get(productController_1.getRecentProduct);
 router.route('/edit-product/:id').put(productController_1.productEdit);
 router.get('/each/:id', productController_1.getSingleProduct);
 router.delete('/each/:id', productController_1.deleteProduct);
+router.patch('/each/:id', productController_1.restoreProduct);
+router.delete('/each/trash/:id', productController_1.deleteProductFromTrash);
 //qr related
 router.post("/generate", productController_1.generateQr);
 router.route("/search").get(productController_1.searchProducts);

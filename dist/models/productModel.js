@@ -37,9 +37,14 @@ const productSchema = new mongoose_1.default.Schema({
     },
     branch: {
         type: String,
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false
     }
 });
 productSchema.index({ SerialNumber: 1 });
 productSchema.index({ branch: 1 });
+productSchema.index({ isDeleted: 1 });
 const Product = mongoose_1.default.model('Product', productSchema);
 exports.default = Product;

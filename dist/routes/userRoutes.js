@@ -18,6 +18,9 @@ router.route("/reset-password").post(atuhController_1.resetPassword);
 router.route("/get-user-details").get(authMiddleware_1.default, atuhController_1.getDetailsOfAUser);
 router.route("/update-user-details").post(authMiddleware_1.default, atuhController_1.sendOtpToCurrentEmail);
 router.route("/verify-otp-user-details").post(authMiddleware_1.default, atuhController_1.verifyOtpFromCurrentEmail);
+//trash
+router.route("/trash-access-otp").post(atuhController_1.trashAccess);
+router.route("/trash-access-verification").post(atuhController_1.confirmAccess);
 // User Logout (client-side token removal)
 router.post('/logout', atuhController_1.userLogout);
 exports.default = router;

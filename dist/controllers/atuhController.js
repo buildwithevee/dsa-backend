@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyOtpFromCurrentEmail = exports.sendOtpToCurrentEmail = exports.updateDetailsOfAUser = exports.getDetailsOfAUser = exports.resetPassword = exports.verifyOTP = exports.forgotPassword = exports.updatePassword = exports.userRegister = exports.userLogout = exports.userLogin = void 0;
+exports.confirmAccess = exports.trashAccess = exports.verifyOtpFromCurrentEmail = exports.sendOtpToCurrentEmail = exports.updateDetailsOfAUser = exports.getDetailsOfAUser = exports.resetPassword = exports.verifyOTP = exports.forgotPassword = exports.updatePassword = exports.userRegister = exports.userLogout = exports.userLogin = void 0;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const userModel_1 = __importDefault(require("../models/userModel"));
@@ -257,3 +257,59 @@ const verifyOtpFromCurrentEmail = (req, res) => __awaiter(void 0, void 0, void 0
     }
 });
 exports.verifyOtpFromCurrentEmail = verifyOtpFromCurrentEmail;
+const trashAccess = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        // Check if the user exists
+        const users = yield userModel_1.default.find().limit(1);
+        if (users.length === 0) {
+            res.status(404).json({ error: 'User not found' });
+            return;
+        }
+        const user = users[0];
+        yield otpModel_1.default.deleteMany({ userId: user._id });
+        const otp = (0, generateOTP_1.generateOTP)();
+        const otpData = yield otpModel_1.default.create({
+            otp: otp,
+            userId: user === null || user === void 0 ? void 0 : user._id,
+            type: "trash-access"
+        });
+        // Configure nodemailer transport
+        const emailsent = yield (0, sendMail_1.sendOtpEmail)(user.email, otp);
+        if (otp) {
+            res.status(201).json({ message: 'We have sent an email to you preffered mail inorder to verify it is you', user: user });
+            return;
+        }
+        else {
+            res.status(500).json({ message: 'Internal server error' });
+        }
+    }
+    catch (error) {
+        console.error('Forgot password error:', error);
+        res.status(500).json({ error: 'Failed to send password reset token' });
+    }
+});
+exports.trashAccess = trashAccess;
+// Reset Password
+const confirmAccess = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { otp } = req.body;
+    try {
+        const users = yield userModel_1.default.find().limit(1);
+        if (users.length === 0) {
+            res.status(404).json({ error: 'User not found' });
+            return;
+        }
+        const user = users[0];
+        const storedOtp = yield otpModel_1.default.findOne({ userId: user._id, type: "trash-access" });
+        if (!storedOtp || storedOtp.otp !== otp) {
+            res.status(400).json({ message: 'Invalid or expired OTP' });
+            return;
+        }
+        yield otpModel_1.default.deleteMany({ userId: user._id });
+        res.status(200).json({ message: "process to next step" });
+    }
+    catch (error) {
+        console.error('trash access error:', error);
+        res.status(400).json({ error: 'Invalid or expired token' });
+    }
+});
+exports.confirmAccess = confirmAccess;

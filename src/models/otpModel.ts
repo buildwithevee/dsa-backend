@@ -8,6 +8,7 @@ export interface IOtp extends Document {
     email: string;
     userId: Types.ObjectId;
     otpExpiry: Date;
+    type: string;
 }
 const otpSchema: Schema<IOtp> = new mongoose.Schema({
     otp: {
@@ -25,6 +26,10 @@ const otpSchema: Schema<IOtp> = new mongoose.Schema({
     email: {
         type: String,
 
+    },
+    type: {
+        type: String,
+        enum: ["forgot", "trash-access"]
     }
 
 }, { timestamps: true })

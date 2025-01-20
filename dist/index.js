@@ -25,7 +25,7 @@ const employee_1 = require("./utils/employee");
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 app.use((0, cors_1.default)());
-app.use(express_1.default.static('C:/client/client/dist'));
+app.use(express_1.default.static('/var/www/evee/dsa/dsa-frontend/dist'));
 app.get("/hi", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     yield (0, employee_1.fetchAndStoreEmployees)();
     res.status(200).json({ mess: "kazhinju" });
@@ -44,7 +44,7 @@ app.use("/api/product", productRoutes_1.default);
 app.use("/api/auth", userRoutes_1.default);
 app.use("/api/reports", ReportRoutes_1.default);
 app.get("*", (req, res) => {
-    res.sendFile('C:/client/client/dist/index.html');
+    res.sendFile('/var/www/evee/dsa/dsa-frontend/dist/index.html');
 });
 // Start server with db connection
 (0, db_1.connectDb)().then(() => {

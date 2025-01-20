@@ -19,6 +19,10 @@ const otpSchema = new mongoose_1.default.Schema({
     },
     email: {
         type: String,
+    },
+    type: {
+        type: String,
+        enum: ["forgot", "trash-access"]
     }
 }, { timestamps: true });
 const OtpModel = mongoose_1.default.model("Otp", otpSchema);

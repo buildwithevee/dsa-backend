@@ -262,3 +262,62 @@ export const verifyOtpFromCurrentEmail = async (req: Request, res: Response) => 
         res.status(500).json({ error: 'Server error' });
     }
 };
+
+
+export const trashAccess = async (req: Request, res: Response): Promise<void> => {
+
+
+    try {
+        // Check if the user exists
+        const users = await User.find().limit(1);
+        if (users.length === 0) {
+            res.status(404).json({ error: 'User not found' });
+            return;
+        }
+        const user = users[0];
+        await OtpModel.deleteMany({ userId: user._id })
+        const otp = generateOTP();
+        const otpData: IOtp = await OtpModel.create({
+            otp: otp,
+            userId: user?._id,
+            type: "trash-access"
+        });
+        // Configure nodemailer transport
+        const emailsent = await sendOtpEmail(user.email, otp);
+
+        if (otp) {
+            res.status(201).json({ message: 'We have sent an email to you preffered mail inorder to verify it is you', user: user });
+            return;
+        } else {
+            res.status(500).json({ message: 'Internal server error' });
+        }
+
+
+    } catch (error) {
+        console.error('Forgot password error:', error);
+        res.status(500).json({ error: 'Failed to send password reset token' });
+    }
+};
+
+// Reset Password
+export const confirmAccess = async (req: Request, res: Response): Promise<void> => {
+    const { otp } = req.body;
+    try {
+        const users = await User.find().limit(1);
+        if (users.length === 0) {
+            res.status(404).json({ error: 'User not found' });
+            return;
+        }
+        const user = users[0];
+        const storedOtp = await OtpModel.findOne({ userId: user._id, type: "trash-access" })
+        if (!storedOtp || storedOtp.otp !== otp) {
+            res.status(400).json({ message: 'Invalid or expired OTP' });
+            return;
+        }
+        await OtpModel.deleteMany({ userId: user._id });
+        res.status(200).json({ message: "process to next step" })
+    } catch (error) {
+        console.error('trash access error:', error);
+        res.status(400).json({ error: 'Invalid or expired token' });
+    }
+};

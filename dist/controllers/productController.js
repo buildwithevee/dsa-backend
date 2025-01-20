@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.searchEmployee = exports.getStats = exports.getProductsBetweenDates = exports.searchProducts = exports.generateQr = exports.deleteProduct = exports.getSingleProduct = exports.productEdit = exports.getRecentProduct = exports.getAllProducts = exports.productCreate = void 0;
+exports.searchEmployee = exports.getStats = exports.getProductsBetweenDates = exports.searchProducts = exports.generateQr = exports.deleteProductFromTrash = exports.restoreProduct = exports.deleteProduct = exports.getSingleProduct = exports.productEdit = exports.getRecentProduct = exports.getAllDeletedProducts = exports.getAllProducts = exports.productCreate = void 0;
 const productModel_1 = __importDefault(require("../models/productModel"));
 const qrcode_1 = __importDefault(require("qrcode"));
 const employee_1 = require("../utils/employee");
@@ -48,7 +48,12 @@ exports.productCreate = productCreate;
 const getAllProducts = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { page = 1, limit = 10 } = req.query; // Default to page 1 and limit 10 if not provided
     try {
-        const products = yield productModel_1.default.find()
+        const products = yield productModel_1.default.find({
+            $or: [
+                { isDeleted: false }, // isDeleted is explicitly false
+                { isDeleted: { $exists: false } }, // isDeleted field doesn't exist
+            ],
+        })
             .skip((Number(page) - 1) * Number(limit)) // Skip the records for the current page
             .limit(Number(limit)) // Limit the number of records per page
             .sort({ EnrollDate: -1 }); // Sort by EnrollDate in descending order
@@ -67,10 +72,39 @@ const getAllProducts = (req, res) => __awaiter(void 0, void 0, void 0, function*
     }
 });
 exports.getAllProducts = getAllProducts;
+const getAllDeletedProducts = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { page = 1, limit = 10 } = req.query; // Default to page 1 and limit 10 if not provided
+    try {
+        const products = yield productModel_1.default.find({
+            isDeleted: true
+        })
+            .skip((Number(page) - 1) * Number(limit)) // Skip the records for the current page
+            .limit(Number(limit)) // Limit the number of records per page
+            .sort({ EnrollDate: -1 }); // Sort by EnrollDate in descending order
+        const totalProducts = yield productModel_1.default.countDocuments(); // Count the total number of products
+        res.status(200).json({
+            success: true,
+            data: products,
+            total: totalProducts,
+            totalPages: Math.ceil(totalProducts / Number(limit)),
+            currentPage: Number(page)
+        });
+    }
+    catch (error) {
+        console.error('Error fetching products:', error);
+        res.status(500).json({ error: 'Failed to fetch products' });
+    }
+});
+exports.getAllDeletedProducts = getAllDeletedProducts;
 const getRecentProduct = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         // Fetch the most recent product based on EnrollDate or _id (descending order)
-        const recentProduct = yield productModel_1.default.find().sort({ EnrollDate: -1 });
+        const recentProduct = yield productModel_1.default.find({
+            $or: [
+                { isDeleted: false }, // isDeleted is explicitly false
+                { isDeleted: { $exists: false } }, // isDeleted field doesn't exist
+            ],
+        }).sort({ EnrollDate: -1 });
         // Check if the product exists
         if (!recentProduct || recentProduct.length === 0) {
             res.status(404).json({ message: "No products found" });
@@ -180,7 +214,9 @@ const deleteProduct = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     const { id } = req.params; // Extract product ID from URL params
     try {
         // Find and delete the product by ID
-        const deletedProduct = yield productModel_1.default.findByIdAndDelete(id);
+        const deletedProduct = yield productModel_1.default.findByIdAndUpdate(id, {
+            $set: { isDeleted: true }
+        });
         // Check if product exists and was deleted
         if (!deletedProduct) {
             res.status(404).json({ error: 'Product not found' });
@@ -195,13 +231,53 @@ const deleteProduct = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     }
 });
 exports.deleteProduct = deleteProduct;
+const restoreProduct = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id } = req.params; // Extract product ID from URL params
+    try {
+        // Find and delete the product by ID
+        const restoredProduct = yield productModel_1.default.findByIdAndUpdate(id, {
+            $set: { isDeleted: false }
+        });
+        // Check if product exists and was deleted
+        if (!restoredProduct) {
+            res.status(404).json({ error: 'Product not found' });
+            return;
+        }
+        // Send success response
+        res.status(200).json({ message: 'Product restored successfully', product: restoredProduct });
+    }
+    catch (error) {
+        console.error('Error while restoring  product', error);
+        res.status(500).json({ error: 'Failed to restore product' });
+    }
+});
+exports.restoreProduct = restoreProduct;
+const deleteProductFromTrash = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id } = req.params; // Extract product ID from URL params
+    try {
+        // Find and delete the product by ID
+        const deletedProduct = yield productModel_1.default.findByIdAndDelete(id);
+        // Check if product exists and was deleted
+        if (!deletedProduct) {
+            res.status(404).json({ error: 'Product not found' });
+            return;
+        }
+        // Send success response
+        res.status(200).json({ message: 'Product deleted successfully', product: deletedProduct });
+    }
+    catch (error) {
+        console.error('Error deleting product', error);
+        res.status(500).json({ error: 'Failed to delete product' });
+    }
+});
+exports.deleteProductFromTrash = deleteProductFromTrash;
 const generateQr = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { productId } = req.body;
     if (!productId) {
         res.status(400).json({ error: 'Product ID is required' });
         return;
     }
-    const url = `http://192.168.0.13:5000/product/${productId}`;
+    const url = `http://ec2-43-204-2-117.ap-south-1.compute.amazonaws.com:5000/product/${productId}`;
     try {
         const qrCodeData = yield qrcode_1.default.toDataURL(url);
         res.status(200).json({ qrCodeData });
@@ -267,7 +343,10 @@ exports.generateQr = generateQr;
 // };
 const searchProducts = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { page, limit, searchTerm, compilance, assignedTo } = req.query;
+        console.log("entered search");
+        const { page, limit, searchTerm, compilance, assignedTo, isDeleted } = req.query;
+        console.log("searchTerm", searchTerm);
+        console.log("isdeleted", isDeleted);
         // Set defaults for pagination
         const pageNo = parseInt(page) || 1;
         const limitOf = parseInt(limit) || 10;
@@ -291,10 +370,14 @@ const searchProducts = (req, res) => __awaiter(void 0, void 0, void 0, function*
         if (compilance !== undefined) {
             query.Compilance = compilance === 'true';
         }
+        if (isDeleted !== undefined) {
+            query.isDeleted = isDeleted === 'true';
+        }
         // Filter by AssignedTo field
         if (assignedTo) {
             query.AssignedTo = { $regex: assignedTo, $options: "i" };
         }
+        console.log(query);
         // Fetch filtered products with pagination
         const products = yield productModel_1.default.find(query)
             .skip(skip)

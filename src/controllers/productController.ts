@@ -50,7 +50,37 @@ export const getAllProducts = async (req: Request, res: Response): Promise<void>
     const { page = 1, limit = 10 } = req.query; // Default to page 1 and limit 10 if not provided
 
     try {
-        const products = await Product.find()
+        const products = await Product.find({
+            $or: [
+                { isDeleted: false }, // isDeleted is explicitly false
+                { isDeleted: { $exists: false } }, // isDeleted field doesn't exist
+            ],
+        })
+            .skip((Number(page) - 1) * Number(limit)) // Skip the records for the current page
+            .limit(Number(limit)) // Limit the number of records per page
+            .sort({ EnrollDate: -1 }); // Sort by EnrollDate in descending order
+
+        const totalProducts = await Product.countDocuments(); // Count the total number of products
+
+        res.status(200).json({
+            success: true,
+            data: products,
+            total: totalProducts,
+            totalPages: Math.ceil(totalProducts / Number(limit)),
+            currentPage: Number(page)
+        });
+    } catch (error) {
+        console.error('Error fetching products:', error);
+        res.status(500).json({ error: 'Failed to fetch products' });
+    }
+};
+export const getAllDeletedProducts = async (req: Request, res: Response): Promise<void> => {
+    const { page = 1, limit = 10 } = req.query; // Default to page 1 and limit 10 if not provided
+
+    try {
+        const products = await Product.find({
+            isDeleted: true
+        })
             .skip((Number(page) - 1) * Number(limit)) // Skip the records for the current page
             .limit(Number(limit)) // Limit the number of records per page
             .sort({ EnrollDate: -1 }); // Sort by EnrollDate in descending order
@@ -74,7 +104,12 @@ export const getAllProducts = async (req: Request, res: Response): Promise<void>
 export const getRecentProduct = async (req: Request, res: Response): Promise<void> => {
     try {
         // Fetch the most recent product based on EnrollDate or _id (descending order)
-        const recentProduct = await Product.find().sort({ EnrollDate: -1 });
+        const recentProduct = await Product.find({
+            $or: [
+                { isDeleted: false }, // isDeleted is explicitly false
+                { isDeleted: { $exists: false } }, // isDeleted field doesn't exist
+            ],
+        }).sort({ EnrollDate: -1 });
 
         // Check if the product exists
         if (!recentProduct || recentProduct.length === 0) {
@@ -216,6 +251,50 @@ export const deleteProduct = async (req: Request, res: Response): Promise<void> 
 
     try {
         // Find and delete the product by ID
+        const deletedProduct = await Product.findByIdAndUpdate(id, {
+            $set: { isDeleted: true }
+        });
+
+        // Check if product exists and was deleted
+        if (!deletedProduct) {
+            res.status(404).json({ error: 'Product not found' });
+            return;
+        }
+
+        // Send success response
+        res.status(200).json({ message: 'Product deleted successfully', product: deletedProduct });
+    } catch (error) {
+        console.error('Error deleting product', error);
+        res.status(500).json({ error: 'Failed to delete product' });
+    }
+};
+export const restoreProduct = async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params; // Extract product ID from URL params
+
+    try {
+        // Find and delete the product by ID
+        const restoredProduct = await Product.findByIdAndUpdate(id, {
+            $set: { isDeleted: false }
+        });
+
+        // Check if product exists and was deleted
+        if (!restoredProduct) {
+            res.status(404).json({ error: 'Product not found' });
+            return;
+        }
+
+        // Send success response
+        res.status(200).json({ message: 'Product restored successfully', product: restoredProduct });
+    } catch (error) {
+        console.error('Error while restoring  product', error);
+        res.status(500).json({ error: 'Failed to restore product' });
+    }
+};
+export const deleteProductFromTrash = async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params; // Extract product ID from URL params
+
+    try {
+        // Find and delete the product by ID
         const deletedProduct = await Product.findByIdAndDelete(id);
 
         // Check if product exists and was deleted
@@ -318,7 +397,11 @@ export const generateQr = async (req: Request, res: Response): Promise<void> => 
 
 export const searchProducts = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { page, limit, searchTerm, compilance, assignedTo } = req.query;
+        console.log("entered search");
+
+        const { page, limit, searchTerm, compilance, assignedTo, isDeleted } = req.query;
+        console.log("searchTerm", searchTerm);
+        console.log("isdeleted", isDeleted);
 
         // Set defaults for pagination
         const pageNo: number = parseInt(page as string) || 1;
@@ -347,11 +430,15 @@ export const searchProducts = async (req: Request, res: Response): Promise<void>
         if (compilance !== undefined) {
             query.Compilance = compilance === 'true';
         }
+        if (isDeleted !== undefined) {
+            query.isDeleted = isDeleted === 'true';
+        }
 
         // Filter by AssignedTo field
         if (assignedTo) {
             query.AssignedTo = { $regex: assignedTo, $options: "i" };
         }
+        console.log(query);
 
         // Fetch filtered products with pagination
         const products = await Product.find(query)
