@@ -473,7 +473,7 @@ export const searchProducts = async (req: Request, res: Response): Promise<void>
 };
 
 export const getProductsBetweenDates = async (req: Request, res: Response): Promise<void> => {
-    const { startDate, endDate, branch } = req.query;
+    const { startDate, endDate, branch, assignedTo } = req.query;
 
     try {
         // Validate date parameters
@@ -500,6 +500,9 @@ export const getProductsBetweenDates = async (req: Request, res: Response): Prom
 
         if (branch) {
             query.branch = branch; // Add branch filter if provided
+        }
+        if (assignedTo) {
+            query.AssignedTo = assignedTo;
         }
 
         // Fetch products within the date range and branch

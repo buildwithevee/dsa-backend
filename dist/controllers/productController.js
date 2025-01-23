@@ -409,7 +409,7 @@ const searchProducts = (req, res) => __awaiter(void 0, void 0, void 0, function*
 });
 exports.searchProducts = searchProducts;
 const getProductsBetweenDates = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { startDate, endDate, branch } = req.query;
+    const { startDate, endDate, branch, assignedTo } = req.query;
     try {
         // Validate date parameters
         if (!startDate || !endDate) {
@@ -431,6 +431,9 @@ const getProductsBetweenDates = (req, res) => __awaiter(void 0, void 0, void 0, 
         };
         if (branch) {
             query.branch = branch; // Add branch filter if provided
+        }
+        if (assignedTo) {
+            query.AssignedTo = assignedTo;
         }
         // Fetch products within the date range and branch
         const products = yield productModel_1.default.find(query)
