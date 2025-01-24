@@ -7,6 +7,7 @@ interface IProduct extends mongoose.Document {
     EnrollDate: Date;
     Compilance: boolean;
     AssignedTo: string;
+    Employee_ID: string;
     warranty: Date | null;
     isDeleted: boolean;
     note: string;
@@ -36,6 +37,9 @@ const productSchema = new mongoose.Schema<IProduct>({
     },
     AssignedTo: {
         type: String,
+    },
+    Employee_ID:{
+        type:String,
     },
     warranty: {
         type: Date,

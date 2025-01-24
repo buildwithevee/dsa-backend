@@ -17,7 +17,7 @@ const productModel_1 = __importDefault(require("../models/productModel"));
 const qrcode_1 = __importDefault(require("qrcode"));
 const employee_1 = require("../utils/employee");
 const productCreate = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { DeviceName, Model, SerialNumber, EnrollDate, Compilance, AssignedTo, warranty, note, branch } = req.body;
+    const { DeviceName, Model, SerialNumber, EnrollDate, Compilance, AssignedTo, Employee_ID, warranty, note, branch } = req.body;
     try {
         // Handle warranty: Use null if no warranty date is provided
         const parsedWarranty = warranty ? new Date(warranty) : null;
@@ -35,6 +35,7 @@ const productCreate = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             warranty: parsedWarranty, // Null or a valid date
             note: note || "",
             branch: branch || "",
+            Employee_ID
         });
         yield product.save();
         res.status(201).json({ product });
@@ -122,7 +123,7 @@ const getRecentProduct = (req, res) => __awaiter(void 0, void 0, void 0, functio
 exports.getRecentProduct = getRecentProduct;
 const productEdit = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params; // Extract product ID from URL params
-    const { DeviceName, Model, SerialNumber, EnrollDate, Compilance, AssignedTo, warranty, note, branch, } = req.body;
+    const { DeviceName, Model, SerialNumber, EnrollDate, Compilance, AssignedTo, Employee_ID, warranty, note, branch, } = req.body;
     try {
         // Validate input
         if (!id || !DeviceName || !Model || !SerialNumber || !EnrollDate) {
@@ -137,6 +138,7 @@ const productEdit = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
             EnrollDate,
             Compilance,
             AssignedTo,
+            Employee_ID,
             warranty,
             note,
             branch
@@ -364,6 +366,7 @@ const searchProducts = (req, res) => __awaiter(void 0, void 0, void 0, function*
                 { Model: searchRegex },
                 { SerialNumber: searchRegex },
                 { AssignedTo: searchRegex },
+                { Employee_ID: searchRegex }
             ];
         }
         // Filter by Compliance

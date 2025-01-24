@@ -11,6 +11,7 @@ export const productCreate = async (req: Request, res: Response): Promise<void> 
         EnrollDate,
         Compilance,
         AssignedTo,
+        Employee_ID,
         warranty,
         note,
         branch
@@ -35,6 +36,7 @@ export const productCreate = async (req: Request, res: Response): Promise<void> 
             warranty: parsedWarranty, // Null or a valid date
             note: note || "",
             branch: branch || "",
+            Employee_ID
         });
 
         await product.save();
@@ -137,6 +139,7 @@ export const productEdit = async (req: Request, res: Response): Promise<void> =>
         EnrollDate,
         Compilance,
         AssignedTo,
+        Employee_ID,
         warranty,
         note,
         branch,
@@ -159,6 +162,7 @@ export const productEdit = async (req: Request, res: Response): Promise<void> =>
                 EnrollDate,
                 Compilance,
                 AssignedTo,
+                Employee_ID,
                 warranty,
                 note,
                 branch
@@ -423,6 +427,7 @@ export const searchProducts = async (req: Request, res: Response): Promise<void>
                 { Model: searchRegex },
                 { SerialNumber: searchRegex },
                 { AssignedTo: searchRegex },
+                { Employee_ID: searchRegex }
             ];
         }
 

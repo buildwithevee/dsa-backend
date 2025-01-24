@@ -28,6 +28,9 @@ const productSchema = new mongoose_1.default.Schema({
     AssignedTo: {
         type: String,
     },
+    Employee_ID: {
+        type: String,
+    },
     warranty: {
         type: Date,
         default: null
