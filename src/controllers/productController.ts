@@ -401,8 +401,8 @@ export const generateQr = async (req: Request, res: Response): Promise<void> => 
 
 export const searchProducts = async (req: Request, res: Response): Promise<void> => {
     try {
-        console.log("entered search");
-
+        // console.log("entered search");
+        // 
         const { page, limit, searchTerm, compilance, assignedTo, isDeleted } = req.query;
         console.log("searchTerm", searchTerm);
         console.log("isdeleted", isDeleted);
@@ -443,7 +443,7 @@ export const searchProducts = async (req: Request, res: Response): Promise<void>
         if (assignedTo) {
             query.AssignedTo = { $regex: assignedTo, $options: "i" };
         }
-        console.log(query);
+        // console.log(query);
 
         // Fetch filtered products with pagination
         const products = await Product.find(query)
@@ -566,15 +566,28 @@ export const getStats = async (req: Request, res: Response) => {
         endOfMonth.setUTCHours(23, 59, 59, 999);
 
         //fetch the total pc count
-        const totalPc = await Product.countDocuments({})
+        const totalPc = await Product.countDocuments({
+            $or: [
+                { isDeleted: false }, // isDeleted is explicitly false
+                { isDeleted: { $exists: false } }, // isDeleted field doesn't exist
+            ],
+        })
         // Fetch the total PC count for today
         const totalPCToday = await Product.countDocuments({
-            EnrollDate: { $gte: startOfToday, $lte: endOfToday }
+            EnrollDate: { $gte: startOfToday, $lte: endOfToday },
+            $or: [
+                { isDeleted: false }, // isDeleted is explicitly false
+                { isDeleted: { $exists: false } }, // isDeleted field doesn't exist
+            ],
         });
 
         // Fetch the total PC count for this month
         const totalPCThisMonth = await Product.countDocuments({
-            EnrollDate: { $gte: startOfMonth, $lte: endOfMonth }
+            EnrollDate: { $gte: startOfMonth, $lte: endOfMonth },
+            $or: [
+                { isDeleted: false }, // isDeleted is explicitly false
+                { isDeleted: { $exists: false } }, // isDeleted field doesn't exist
+            ],
         });
 
         // Send response
